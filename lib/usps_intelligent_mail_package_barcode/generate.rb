@@ -3,10 +3,13 @@ require 'barby/barcode/gs1_128'
 require 'barby/outputter/ascii_outputter'
 require 'barby/outputter/png_outputter'
 
+require 'RMagick'
+include Magick
+
 module UspsIntelligentMailPackageBarcode
 
 
-  def mod10(raw)
+  def self.mod10(raw)
     input = raw
     input[input.size - 1] = "0"
     matrix = input.split(//).map.with_index { |val, index|  [input.size  - index, val.to_i] }
@@ -16,7 +19,7 @@ module UspsIntelligentMailPackageBarcode
   end
 
   
-  def generate(destination_zip, service_type_code, package_serial_num)
+  def self.generate(destination_zip, usps_service_code, package_serial_num)
     
     # sanity check inputs
     # ---------------------
@@ -24,19 +27,17 @@ module UspsIntelligentMailPackageBarcode
     raise "must set mailer_id" unless UspsIntelligentMailPackageBarcode.config.mailer_id
     raise "zip wrong size" unless destination_zip.size == 5
     
-    routing_code = "420"
-    
-    channel_application_id = nil
-    case UspsIntelligentMailPackageBarcode.config.mailer_id.size 
+    channel_application_id = 
+    case UspsIntelligentMailPackageBarcode.config.mailer_id.to_s.size 
     when 6 then "93"
     when 9 then "92"
-    else raise "illegal USPS mailer id length #{UspsIntelligentMailPackageBarcode.config.mailer_id.size}: expected 6 or 9"
+    else raise "USPS mailer id #{UspsIntelligentMailPackageBarcode.config.mailer_id} has illegal length #{UspsIntelligentMailPackageBarcode.config.mailer_id.to_s.size}: expected 6 or 9"
     end
     
    
-    service_type_code = sprintf("%03i", service_type_code.to_i)
-    service_type_code_data = USPS_MAIL_CLASSES_FOR_IMPB.select { |x| x[:code] == service_type_code}.first
-    raise "illegal service_type_code #{service_type_code} - no hits found" unless service_type_code_data
+    usps_service_code = sprintf("%03i", usps_service_code.to_i)
+    usps_service_code_data = USPS_MAIL_CLASSES_FOR_IMPB.select { |x| x[:code] == usps_service_code}.first
+    raise "illegal usps_service_code #{usps_service_code} - no hits found" unless usps_service_code_data
     
     # Note: we IMPB allows us to use longer serial numbers (11 or 14
     # digit), but that introduces a small bit of trickiness in the
@@ -46,7 +47,7 @@ module UspsIntelligentMailPackageBarcode
     #
     id_size            = UspsIntelligentMailPackageBarcode.config.mailer_id.size 
     ser_num_size       = (id_size == 9) ? 7 : 10
-    package_serial_num = sprintf("%0#{ser_num_size}", package_serial_num.to_i)
+    package_serial_num = sprintf("%0#{ser_num_size}i", package_serial_num.to_i)
     raise "serial number too large" if package_serial_num.size > ser_num_size
 
     mailer_id          = UspsIntelligentMailPackageBarcode.config.mailer_id
@@ -58,7 +59,7 @@ module UspsIntelligentMailPackageBarcode
     #
     # Routing Information 
     # ---------------------
-    #     Postal Code AppIdentifier (AI) |  3  | Notes that this is a postal barcode. Field is always “420.”
+    #     Application Identifier (AI)    |  3  | Notes that this is a postal barcode. Field is always “420.”
     #                                            Will be suppressed from human-readable text
     #     Destination ZIP                | 5/9 | May be five- or nine-digits in length. Some products
     #                                            may require this information.
@@ -88,40 +89,102 @@ module UspsIntelligentMailPackageBarcode
     #
     #    Barby::GS1128::constants
     #    => [:FNC1, :FNC2, :FNC3, :FNC4, :CODEA, :CODEB, :CODEC, :SHIFT, :STARTA, :STARTB, :STARTC, :STOP, :TERMINATE, :ENCODINGS, :VALUES, :CONTROL_CHARACTERS, :CTRL_RE, :LOWR_RE, :DGTS_RE] 
-    
-    
+
+    app_id = "420"
+
+puts "XX-1 #{channel_application_id}"
+puts "XX-2 #{usps_service_code_data[:code]}"
+puts "XX-3 #{mailer_id}"
+puts "XX-4 #{package_serial_num}"
+
     fields = 
       [
        # done by Barby     Barby::GS1128::STARTA                              
        # done by Barby     Barby::GS1128::FNC1                              
-       { :barcode => true, :human => false,  :data => routing_code                  },
-       { :barcode => true, :human => false,  :data => destination_zip               },
-       { :barcode => true, :human => false,  :data => Barby::GS1128::FNC1           }, 
-       { :barcode => true, :human => true,   :data => channel_application_id        }, 
-       { :barcode => true, :human => true,   :data => service_type_code_data[:code] }, 
-       { :barcode => true, :human => true,   :data => mailer_id                     }, 
-       { :barcode => true, :human => true,   :data => package_serial_num            }, 
-       { :barcode => true, :human => true,   :data => mod10(channel_application_id        +
-                                                            service_type_code_data[:code] +
+       # done by Barby     "420"  (app ID)
+       { :barcode => true,  :human => false,  :data => destination_zip               },
+       { :barcode => true,  :human => false,  :data => Barby::GS1128::FNC1           }, 
+       { :barcode => true,  :human => true,   :data => channel_application_id        }, 
+       { :barcode => true,  :human => true,   :data => usps_service_code_data[:code] }, 
+       { :barcode => true,  :human => true,   :data => mailer_id                     }, 
+       { :barcode => true,  :human => true,   :data => package_serial_num            }, 
+       { :barcode => true,  :human => true,   :data => mod10(channel_application_id        +
+                                                            usps_service_code_data[:code] +
                                                             mailer_id                     +
                                                             package_serial_num)     },
        # done by Barby      mod103 checksum               
        # done by Barby      Barby::GS1128::STOP           
       ]
     
-    barcode_text = fields.select { |x| x[:barcode] }.concat
+    barcode_text = fields.select { |x| x[:barcode] }.map{|x| x[:data]}.join
     raise "total size #{barcode_text.size} exceeds max 34" if barcode_text.size > 34
-    barcode = Barby::GS1128.new(barcode_text, "A", "420")
-    image = barcode.to_image
-    impb_file = "/tmp/impb_#{self.id}_#{rand(999999)}.png"
-    image.save(impb_file)
 
-    human_text = fields.select { |x| x[:human] }.concat
-    human_text.scan(/(.{4})/).map(&:first).join(" ")
+    #----------
+    # create human text
+    #----------
+    human_text = fields.select { |x| x[:human] }.map{|x| x[:data]}.join
+    human_text = human_text.scan(/(.{4})/).map(&:first).join(" ")
 
+    #----------
+    # draw raw barcode
+    #----------
+    encoding_scheme_subtype = "A"
+    barcode = Barby::GS1128.new(barcode_text, encoding_scheme_subtype, app_id)
+    # USPS regs:   0.013" <= xdim <= 0.21"
+    image = barcode.to_image(:height=>150, :xdim=> 1 )
+
+    file_raw = "/tmp/impb_raw_#{package_serial_num}.png"
+    image.save(file_raw)
+
+    #----------
+    # read barcode back in, annotate with human readable text
+    #----------
+
+    image = Image.read(file_raw).first
+
+    watermark_1 = Image.new(800, 50)
+    watermark_1_text = Draw.new
+    watermark_1_text.annotate(watermark_1, 0,0,0,0, human_text) do
+      watermark_1_text.gravity = CenterGravity
+      self.pointsize = 20
+      self.font_family = "Arial"
+      self.font_weight = BoldWeight
+      self.stroke = "none"
+    end
+    image.composite!(watermark_1, SouthGravity, HardLightCompositeOp)  
+
+    watermark_2 = Image.new(800, 50)
+    watermark_2_text = Draw.new
+    watermark_2_text.annotate(watermark_2, 0,0,0,0, usps_service_code_data[:banner]) do
+      watermark_2_text.gravity = CenterGravity
+      self.pointsize = 20
+      self.font_family = "Arial"
+      self.font_weight = BoldWeight
+      self.stroke = "none"
+    end
+    image.composite!(watermark_2, NorthGravity, HardLightCompositeOp)  
+
+    gc = Draw.new
+    # stroke_width is broken! https://github.com/rmagick/rmagick/issues/91
+    gc.stroke_width(10)
+    y = 2
+    gc.line(0,y,  400, y)
+    gc.line(0,y+1,  400, y+1)
+    gc.line(0,y+2,  400, y+2)
+    gc.line(0,y+3,  400, y+3)
+    y = 160
+    gc.line(0,y,  400, y)
+    gc.line(0,y+1,  400, y+1)
+    gc.line(0,y+2,  400, y+2)
+    gc.line(0,y+3,  400, y+3)
+
+    gc.draw(image)
+
+
+    file_annotated = "/tmp/impb_done_#{package_serial_num}.png"
+    image.write(file_annotated)
+
+    [ file_annotated, human_text ]
   end
 
 end
-
-
-

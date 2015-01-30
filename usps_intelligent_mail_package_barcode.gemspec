@@ -19,6 +19,7 @@ Gem::Specification.new do |s|
 
   s.add_dependency "barby",  "~> 0.6.2"
   s.add_dependency "chunky_png"
+  s.add_dependency "rmagick", "~> 2.13.4"
 
   s.add_development_dependency "sqlite3"
 end

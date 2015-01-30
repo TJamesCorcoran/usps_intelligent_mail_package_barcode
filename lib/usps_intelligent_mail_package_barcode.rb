@@ -2,5 +2,6 @@ module UspsIntelligentMailPackageBarcode
 end
 
 require 'usps_intelligent_mail_package_barcode/config'
+require 'usps_intelligent_mail_package_barcode/generate'
 require 'usps_intelligent_mail_package_barcode/acts_as_impb'
 require 'usps_intelligent_mail_package_barcode/usps_mail_classes_for_impb'

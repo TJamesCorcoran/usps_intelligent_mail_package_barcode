@@ -6,28 +6,46 @@ ruby library helps you generate conformant barcodes.
 
 == Installation and Use
 
-# add this to your Gemfile
+* install imagemagick devel files on your machine
+<code>
+sudo apt-get install libmagickwand-dev
+</code>
+
+* add this to your Gemfile
+<code>
     gem "usps_intelligent_mail_package_barcode", :git =>"http://github.com/TJamesCorcoran/usps_intelligent_mail_package_barcode"
-# type
+</code>
+
+* at the command line type
+<code>
     bundle install
-# get a mailer ID from the USPS https://gateway.usps.com/eAdmin/view/knowledge?id=MID
-# add this to your config/application.rb
+</code>
+
+* get a mailer ID from the USPS https://gateway.usps.com/eAdmin/view/knowledge?id=MID
+
+* add this to your config/application.rb
+<code>
     UspsIntelligentMailPackageBarcode.configure do |config|
-      config.mailer_id = <mailer ID>
+      config.mailer_id = "<mailer ID>"
     end
-# 
+</code>
+
+* add something like this in your application
+<code>
+  usps_class = UspsIntelligentMailPackageBarcode::USPS_MAIL_CLASSES_FOR_IMPB.select{ |x| x[:mail_class] == "BB" && ! x[:cod] && !x[:insurance] && !x[:merch_return] && !x[:signature] && !x[:receipt] && !x[:tracking] }.first
+  zip_code   = "20755"
+  serialnum  =  1234
+  UspsIntelligentMailPackageBarcode.generate(zip_code, usps_class[:code], serialnum)
+</code>
 
 == Barcode fields
 
 fnc1
 * 2.5.1.1 YES - channel application (2 digit) - 92 if you have a mailer ID
-* 2.5.1.2 NO! - channel identifier (1 digit)
 * 2.5.1.3 YES - destination zip (5 or 9) - SUPRESS IN HUMAN READABLE
-* 2.5.1.4 NO! - device ID (6)
-* 2.5.1.5 NO! - Julian Date YYDD (4)
-* 2.5.1.6 mailer ID (6 or 9)
-* 2.5.1.7 mod 10 check digit
-* 2.5.1.8 YES application dentifier - "420" - SUPRESS IN HUMAN READABLE
+* 2.5.1.6 YES - mailer ID (6 or 9)
+* 2.5.1.7 YES - mod 10 check digit
+* 2.5.1.8 YES - application dentifier - "420" - SUPRESS IN HUMAN READABLE
 * 2.5.1.9 YES - serial # (5, 8... digit  ) - we use a 5 digit
 * 2.5.1.10 ??? service type code (3)
 * 2.5.1.11 NO! -source identifier (2)
@@ -44,20 +62,22 @@ fnc1
 
 == References
 
-USPS:
-# https://ribbs.usps.gov/index.cfm?page=intellmailpackage
-# https://ribbs.usps.gov/intelligentmail_package/documents/tech_guides/BarcodePackageIMSpec.pdf
-# https://ribbs.usps.gov/intelligentmail_package/documents/tech_guides/PUB199IMPBImpGuide.pdf
-## page 21
+<img src="./example.png">
 
-# https://ribbs.usps.gov/intelligentmail_package/documents/tech_guides/IMPB_FAQs.pdf
-# http://www.slideshare.net/pitneybowes/i-mpb-presentation-feb-2014-v2a
+[USPS]
+* https://ribbs.usps.gov/index.cfm?page=intellmailpackage
+* https://ribbs.usps.gov/intelligentmail_package/documents/tech_guides/BarcodePackageIMSpec.pdf
+* https://ribbs.usps.gov/intelligentmail_package/documents/tech_guides/PUB199IMPBImpGuide.pdf
+** page 21
+* https://ribbs.usps.gov/intelligentmail_package/documents/tech_guides/IMPB_FAQs.pdf
+* http://www.slideshare.net/pitneybowes/i-mpb-presentation-feb-2014-v2a
 
-Barby:
-# https://github.com/toretore/barby
+[Barby]
+* https://github.com/toretore/barby
+* https://github.com/toretore/barby/wiki/Outputters
 
-GS1-128:
-# hfnc1ttp://en.wikipedia.org/wiki/GS1-128
+[GS1-128]
+* hfnc1ttp://en.wikipedia.org/wiki/GS1-128
 
 (Note that 420 in the 'application code' field in our barcode says
 that we're in the "Ship To/Deliver To Postal Code (Single Postal
