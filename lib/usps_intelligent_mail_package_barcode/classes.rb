@@ -1,17 +1,16 @@
-"AT"
-"BB"
-"BL"
-"BP"
-"BS"
-"CM"
-"DM"
-"EX"
-"FC"
-"LW"
-"PM"
-"PS"
-"RP"
-"SA"
+"BB" - bound
+"BL" - library
+"BP" - standard post
+"BS" - media mail 
+"CM" - critical mail
+"DM" - for the blind
+"EX" - express
+"FC" - first class
+"LW" - light weight
+"PM" - priority mail
+"PS" - parcel select
+"RP" - return parcel
+"SA" - standard mail
 
 # from
 #   https://ribbs.usps.gov/intelligentmail_package/documents/tech_guides/PUB199IMPBImpGuide.pdf
