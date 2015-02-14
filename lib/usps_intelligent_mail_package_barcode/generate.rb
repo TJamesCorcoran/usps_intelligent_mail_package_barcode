@@ -92,11 +92,6 @@ module UspsIntelligentMailPackageBarcode
 
     app_id = "420"
 
-puts "XX-1 #{channel_application_id}"
-puts "XX-2 #{usps_service_code_data[:code]}"
-puts "XX-3 #{mailer_id}"
-puts "XX-4 #{package_serial_num}"
-
     fields = 
       [
        # done by Barby     Barby::GS1128::STARTA                              
